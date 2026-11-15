@@ -1,0 +1,50 @@
+name: API tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Start system under test
+        run: |
+          node sut/server.mjs > sut.log 2>&1 &
+          npx --yes wait-on@8 http://localhost:4173/health --timeout 30000
+
+      - name: Run tests (headless Chrome)
+        run: mvn -B -ntp verify
+        env:
+          HEADLESS: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports
+            target/allure-results
+          if-no-files-found: ignore
+      - name: Publish test summary
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: '**/target/surefire-reports/TEST-*.xml'
+          include_passed: false
