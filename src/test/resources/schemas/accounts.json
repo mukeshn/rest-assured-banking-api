@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "customer",
+    "accounts"
+  ],
+  "properties": {
+    "customer": {
+      "type": "string"
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "currency",
+          "balance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ACC-\\d{3}$"
+          },
+          "type": {
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CREDIT_CARD"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z]{2}\\d{2}[A-Z0-9]{10,30}$"
+          },
+          "currency": {
+            "const": "EUR"
+          },
+          "balance": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

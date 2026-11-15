@@ -1,0 +1,10 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Banking API" parallel="classes" thread-count="3">
+  <test name="Banking API">
+    <classes>
+      <class name="com.mukeshn.bankapi.tests.AuthTest"/>
+  <class name="com.mukeshn.bankapi.tests.AccountsTest"/>
+  <class name="com.mukeshn.bankapi.tests.TransferTest"/>
+    </classes>
+  </test>
+</suite>
