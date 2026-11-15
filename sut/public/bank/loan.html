@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Personal loan | Northbridge Bank</title><link rel="stylesheet" href="/assets/base.css"></head>
+<body>
+<main>
+  <h1>Personal loan calculator</h1>
+  <form id="loan" class="card row" novalidate>
+    <div><label for="loan-amount">Loan amount (EUR)</label><input id="loan-amount" type="number" min="1000" max="100000" step="500" value="10000" data-testid="loan-amount"></div>
+    <div><label for="loan-term">Term</label><select id="loan-term" data-testid="loan-term"><option value="12">12 months</option><option value="24">24 months</option><option value="36" selected>36 months</option><option value="48">48 months</option><option value="60">60 months</option><option value="72">72 months</option><option value="84">84 months</option></select></div>
+    <div><label for="loan-rate">Annual rate (%)</label><input id="loan-rate" type="number" step="0.01" value="5.99" data-testid="loan-rate"></div>
+    <div style="display:flex;align-items:end"><button class="btn" data-testid="calculate">Calculate</button></div>
+  </form>
+  <div class="alert error hidden" role="alert" data-testid="loan-error"></div>
+  <section class="card hidden" data-testid="loan-result">
+    <p>Monthly payment: <strong data-testid="monthly-payment"></strong></p>
+    <p>Total repayment: <strong data-testid="total-repayment"></strong></p>
+    <p>Total interest: <strong data-testid="total-interest"></strong></p>
+  </section>
+</main>
+<script type="module">
+  import { api, eur, requireLogin, renderShell } from './app.js';
+  requireLogin();
+  renderShell('loan');
+  const $ = (s) => document.querySelector(s);
+  $('#loan').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('[data-testid="loan-error"]').classList.add('hidden');
+    try {
+      const q = await api('/api/bank/loans/quote', { method: 'POST', body: { amount: Number($('#loan-amount').value), termMonths: Number($('#loan-term').value), annualRate: Number($('#loan-rate').value) } });
+      $('[data-testid="monthly-payment"]').textContent = eur(q.monthlyPayment);
+      $('[data-testid="monthly-payment"]').dataset.value = q.monthlyPayment;
+      $('[data-testid="total-repayment"]').textContent = eur(q.totalRepayment);
+      $('[data-testid="total-interest"]').textContent = eur(q.totalInterest);
+      $('[data-testid="loan-result"]').classList.remove('hidden');
+    } catch (ex) {
+      $('[data-testid="loan-error"]').textContent = ex.message;
+      $('[data-testid="loan-error"]').classList.remove('hidden');
+      $('[data-testid="loan-result"]').classList.add('hidden');
+    }
+  });
+</script>
+</body>
+</html>

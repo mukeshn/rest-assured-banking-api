@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Statement | Northbridge Bank</title><link rel="stylesheet" href="/assets/base.css"></head>
+<body>
+<main>
+  <h1 data-testid="statement-title">Account statement</h1>
+  <p class="muted">Period: 01.11.2026 - 30.11.2026 · <span data-testid="statement-iban"></span></p>
+  <table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody data-testid="statement-rows"></tbody></table>
+  <p>Closing balance: <strong data-testid="closing-balance"></strong></p>
+  <button class="btn secondary" onclick="window.print()" data-testid="print">Print</button>
+</main>
+<script type="module">
+  import { api, eur, formatIban } from './app.js';
+  const id = new URLSearchParams(location.search).get('account');
+  const [acc, tx] = await Promise.all([api('/api/bank/accounts/' + id), api(`/api/bank/accounts/${id}/transactions`)]);
+  document.querySelector('[data-testid="statement-title"]').textContent = `Account statement - ${acc.name}`;
+  document.querySelector('[data-testid="statement-iban"]').textContent = acc.iban ? formatIban(acc.iban) : acc.maskedPan;
+  document.querySelector('[data-testid="statement-rows"]').innerHTML = tx.transactions.map((t) => `<tr><td>${t.date}</td><td>${t.description}</td><td style="text-align:right">${eur(t.amount)}</td></tr>`).join('');
+  document.querySelector('[data-testid="closing-balance"]').textContent = eur(acc.balance);
+</script>
+</body>
+</html>

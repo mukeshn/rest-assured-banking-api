@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accounts | Northbridge Bank</title><link rel="stylesheet" href="/assets/base.css"></head>
+<body>
+<main>
+  <h1>Welcome back, <span data-testid="welcome-name"></span></h1>
+  <section class="grid" data-testid="accounts"></section>
+  <h2 style="margin-top:2rem">Transactions <span class="muted" data-testid="tx-account-label"></span></h2>
+  <div class="row card">
+    <div><label for="tx-category">Category</label><select id="tx-category" data-testid="tx-category"><option value="">All</option><option>INCOME</option><option>HOUSING</option><option>GROCERIES</option><option>TRAVEL</option><option>UTILITIES</option><option>TRANSFER</option><option>SHOPPING</option><option>DINING</option></select></div>
+    <div style="display:flex;align-items:end;gap:.5rem">
+      <button class="btn secondary" data-testid="download-statement">Download CSV statement</button>
+      <button class="btn secondary" data-testid="open-statement">Open printable statement</button>
+    </div>
+  </div>
+  <table data-testid="tx-table"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody></tbody></table>
+  <p class="muted" data-testid="tx-count"></p>
+</main>
+<script type="module">
+  import { api, eur, formatIban, requireLogin, renderShell, token } from './app.js';
+  requireLogin();
+  renderShell('dashboard');
+  const $ = (s) => document.querySelector(s);
+  let selected = 'ACC-001';
+  const { customer, accounts } = await api('/api/bank/accounts');
+  $('[data-testid="welcome-name"]').textContent = customer;
+  $('[data-testid="accounts"]').innerHTML = accounts.map((a) => `
+    <article class="card" data-testid="account-card" data-account-id="${a.id}" tabindex="0" role="button" aria-label="Show transactions for ${a.name}">
+      <h3 data-testid="account-name">${a.name}</h3>
+      <p class="muted" data-testid="account-iban">${a.iban ? formatIban(a.iban) : a.maskedPan}</p>
+      <p data-testid="account-balance" data-value="${a.balance}" style="font-size:1.3rem;color:${a.balance < 0 ? 'var(--err)' : 'inherit'}">${eur(a.balance)}</p>
+    </article>`).join('');
+  async function loadTx() {
+    const cat = $('#tx-category').value;
+    const d = await api(`/api/bank/accounts/${selected}/transactions${cat ? '?category=' + cat : ''}`);
+    $('[data-testid="tx-account-label"]').textContent = '- ' + accounts.find((a) => a.id === selected).name;
+    $('tbody').innerHTML = d.transactions.map((t) => `<tr data-testid="tx-row"><td>${t.date}</td><td data-testid="tx-description">${t.description}</td><td>${t.category}</td><td style="text-align:right" data-testid="tx-amount" data-value="${t.amount}">${eur(t.amount)}</td></tr>`).join('');
+    $('[data-testid="tx-count"]').textContent = `${d.count} transaction(s)`;
+  }
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-testid="account-card"]');
+    if (card) { selected = card.dataset.accountId; loadTx(); }
+  });
+  $('#tx-category').addEventListener('change', loadTx);
+  $('[data-testid="download-statement"]').addEventListener('click', async () => {
+    const res = await fetch(`/api/bank/accounts/${selected}/statement.csv`, { headers: { authorization: `Bearer ${token.get()}` } });
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `statement-${selected}-2026-11.csv` });
+    document.body.append(a); a.click(); a.remove();
+  });
+  $('[data-testid="open-statement"]').addEventListener('click', () => window.open(`/bank/statement.html?account=${selected}`, '_blank'));
+  loadTx();
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Login | Northbridge Bank</title><link rel="stylesheet" href="/assets/base.css"></head>
+<body>
+<header class="top"><strong>Northbridge Bank</strong><span class="spacer"></span><span class="muted" style="color:#cfe">Online Banking</span></header>
+<main>
+  <section class="card" style="max-width:420px;margin:2rem auto">
+    <div class="alert success hidden" data-testid="login-info" role="status"></div>
+    <form id="step-credentials" novalidate>
+      <h1>Log in</h1>
+      <label for="username">Username</label><input id="username" autocomplete="username" data-testid="username">
+      <label for="password">PIN / Password</label><input id="password" type="password" autocomplete="current-password" data-testid="password">
+      <div class="alert error hidden" role="alert" data-testid="login-error"></div>
+      <p><button class="btn" data-testid="login-submit">Continue</button></p>
+    </form>
+    <form id="step-otp" class="hidden" novalidate>
+      <h1>Confirm it's you</h1>
+      <p data-testid="otp-hint">We sent a 6-digit code to <span data-testid="masked-phone"></span>.</p>
+      <label for="otp">Security code</label><input id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-testid="otp">
+      <div class="alert error hidden" role="alert" data-testid="otp-error"></div>
+      <p><button class="btn" data-testid="otp-submit">Verify</button></p>
+    </form>
+  </section>
+</main>
+<script type="module">
+  import { api, token } from './app.js';
+  const $ = (s) => document.querySelector(s);
+  const reason = new URLSearchParams(location.search).get('reason');
+  const info = { timeout: 'You were logged out due to inactivity.', logout: 'You have been logged out securely.', expired: 'Your session has expired. Please log in again.' }[reason];
+  if (info) { $('[data-testid="login-info"]').textContent = info; $('[data-testid="login-info"]').classList.remove('hidden'); }
+  let challengeId;
+  $('#step-credentials').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('[data-testid="login-error"]');
+    err.classList.add('hidden');
+    if (!$('#username').value || !$('#password').value) { err.textContent = 'Please enter username and password.'; err.classList.remove('hidden'); return; }
+    try {
+      const r = await api('/api/bank/auth/login', { method: 'POST', body: { username: $('#username').value.trim(), password: $('#password').value } });
+      challengeId = r.challengeId;
+      $('[data-testid="masked-phone"]').textContent = r.maskedPhone;
+      $('#step-credentials').classList.add('hidden');
+      $('#step-otp').classList.remove('hidden');
+      $('#otp').focus();
+    } catch (ex) {
+      err.textContent = ex.status === 403 ? 'Your online banking access is blocked. Please call +49 821 000 000.' : 'Username or password is incorrect.';
+      err.classList.remove('hidden');
+    }
+  });
+  $('#step-otp').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('[data-testid="otp-error"]');
+    try {
+      const r = await api('/api/bank/auth/otp', { method: 'POST', body: { challengeId, otp: $('#otp').value.trim() } });
+      token.set(r.accessToken);
+      sessionStorage.setItem('nb.name', r.customer.name);
+      location.href = '/bank/dashboard.html';
+    } catch (ex) {
+      err.textContent = ex.status === 429 ? 'Too many attempts. Please log in again.' : `The code is incorrect. ${ex.data?.attemptsLeft ?? ''} attempts left.`;
+      err.classList.remove('hidden');
+      if (ex.status === 429) setTimeout(() => location.reload(), 1500);
+    }
+  });
+</script>
+</body>
+</html>
