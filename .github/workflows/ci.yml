@@ -44,7 +44,7 @@ jobs:
           if-no-files-found: ignore
       - name: Publish test summary
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '**/target/surefire-reports/TEST-*.xml'
           include_passed: false
